@@ -1,0 +1,21 @@
+﻿@page "/stockPrediction"
+
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize]
+
+<PageTitle>Stock Prediction</PageTitle>
+
+<AuthorizeView>
+    <div class="alert alert-primary" role="alert">
+        Please enter a stock ticker symbol to search for
+    </div>
+
+    <div class="row m-2">
+        <div class="col-lg-4 col-md-6 col-sm-12">
+            <label class="form-label">Ticker Symbol:</label>
+            <input type="text" class="form-control" />
+            <button type="button" class="btn btn-primary mt-2">Search</button>
+        </div>
+    </div>
+</AuthorizeView>

@@ -1,0 +1,140 @@
+﻿@page "/eatForYourself"
+@inject IEatForYourselfService _eatForYourself
+
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>Eat For Yourself</PageTitle>
+
+<h1>Eat For Yourself</h1>
+
+<p>Search foods to see ingredients and details from <a href="https://fdc.nal.usda.gov/api-guide.html" target="_blank">USDA</a></p>
+
+<EditForm Model="@EatSearch" OnValidSubmit="FoodSearch" FormName="USDAFoodSearch">
+    <DataAnnotationsValidator />
+    <div class="row">
+        <div class="card col-12">
+            <div class="card-body">
+                <label for="foodDesc" class="form-label form-label-required fw-bold">Food Description:</label>
+                <InputText class="form-control" type="text" @bind-Value="EatSearch.FoodDescription" />
+                <span class="text-danger"><ValidationMessage For="@(() => EatSearch.FoodDescription)" /></span>
+
+                <label for="foodComp" class="form-label fw-bold mt-2">Food Company:</label>
+                <InputText class="form-control" type="text" @bind-Value="EatSearch.Company" />
+                
+                <button type="submit" class="btn btn-primary mt-2">Search USDA</button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@if(result != null)
+{
+    <hr/>
+    <div clas="row">
+        <div class="card">
+            <div class="card-body">
+                <label class="form-label fw-bold">Results:</label>
+                <DataGrid TItem="Food"
+                          Data="@result.foods"
+                          Responsive
+                          Sortable
+                          Filterable
+                          FilterMode="DataGridFilterMode.Menu"
+                          ShowPager=true>
+                    <DataGridColumn Field="@nameof(Food.description)" Caption="Food Description" />
+                    <DataGridColumn Field="@nameof(Food.brandOwner)" Caption="Brand Company" />
+                    <DataGridColumn Field="@nameof(Food.brandName)" Caption="Brand Name" />
+                    <DataGridColumn Sortable="false" Filterable="false">
+                        <DisplayTemplate>
+                            @{
+                                var fd = (context as Food);
+
+                                if (fd != null)
+                                {
+                                    <button type="button" class="btn btn-primary btn-sm" @onclick="() => ShowFood(fd)">View Details</button>
+                                }
+                            }
+                        </DisplayTemplate>
+                    </DataGridColumn>
+                </DataGrid>
+            </div>
+        </div> 
+    </div>   
+}
+
+@if (Loader)
+{
+    <div class="mt-5">
+        <div style="text-align: center;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+    </div>
+}
+
+<Modal @ref="modalFood" RenderMode="ModalRenderMode.LazyLoad">
+    <ModalContent Centered Size="ModalSize.Large">
+        <ModalHeader>
+            <ModalTitle>@CurrentFood.description</ModalTitle>
+            <CloseButton />
+        </ModalHeader>
+            <ModalBody>
+                <label class="form-label fw-bold">Brand Company:</label>
+                <p>@CurrentFood.brandOwner</p>
+                <label class="form-label fw-bold">Brand Name:</label>
+                <p>@CurrentFood.brandName</p>
+                <label class="form-label fw-bold">Ingredients:</label>
+                <p>@CurrentFood.ingredients</p>
+                <label class="form-label fw-bold">Serving Size:</label>
+                <p>@CurrentFood.servingSize@CurrentFood.servingSizeUnit</p>
+                <label class="form-label fw-bold">Nutrients:</label>
+                <ul>
+                @foreach(var n in CurrentFood.foodNutrients.OrderBy(x => x.nutrientName))
+                {
+                    <li>
+                        @n.nutrientName: @n.value@n.unitName (@n.percentDailyValue% daily value)
+                    </li>
+                }
+                </ul>
+            </ModalBody>
+            <ModalFooter>
+                <button type="button"
+                        class="btn btn-danger"
+                        @onclick="HideModal">
+                    Close
+                </button>
+            </ModalFooter>
+    </ModalContent>
+</Modal>
+
+@code {
+    [SupplyParameterFromForm]
+    private EatForYourselfSearch EatSearch { get; set; } = new();
+    private EatForYourselfResult? result { get; set; }
+    private Food? CurrentFood {get;set;}
+    private bool Loader { get; set; } = false;
+
+    private async Task FoodSearch()
+    {
+        await Task.Run(() => { result = null; Loader = true; });
+        StateHasChanged();
+        result = await _eatForYourself.USDASearch(EatSearch);
+        Loader = false;
+        StateHasChanged();
+    }
+
+    private Modal modalFood;
+
+    private Task ShowFood(Food fd)
+    {
+        CurrentFood = fd;
+        return modalFood.Show();
+    }
+
+    private Task HideModal()
+    {
+        return modalFood.Hide();
+    }
+}
